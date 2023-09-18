@@ -14,13 +14,13 @@ class OTATest(unittest.TestCase):
         # print(assist_ota)
 
     def testRunTimedWord(self):
-        ota = buildOTA('./examples/a.json')
+        ota = buildOTA('../examples/DOTA/a.json')
         assist_ota = buildAssistantOTA(ota)
         test_data = [
-            ([], 0),
-            ([('a', 1)], 0),
-            ([('a', 1), ('b', 1)], 1),
-            ([('a', 0)], -1),
+            ((), 0),
+            ((('a', 1)), 0),
+            ((('a', 1), ('b', 1)), 1),
+            ((('a', 0)), -1),
         ]
         for tws, res in test_data:
             tws = [TimedWord(action, time) for action, time in tws]

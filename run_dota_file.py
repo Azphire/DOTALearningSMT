@@ -7,7 +7,9 @@ from ota import buildOTA, OTAToDOT
 from smart_learner import learn_ota
 
 if __name__ == "__main__":
-    file_path = sys.argv[1]
+
+    # file_path = sys.argv[1]
+    file_path = 'examples/DOTA/12_4_20/12_4_20-1.json'
     
     graph = False
     if len(sys.argv) == 3:
