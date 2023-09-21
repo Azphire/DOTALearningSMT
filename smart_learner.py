@@ -34,10 +34,12 @@ def generate_pair(t1, t2):
     idx = start_diff_index(t1, t2)
     pairs = []
     # Common prefix part
+    # 相同的前缀部分，最后一次重置信息应当是一样的
     for ci in range(-1, idx):
         pairs.append((ci, ci))
         # t1: x |x| x o o
         # t2: x |x| x |o o o|
+        # 在后续部分t2又有重置
         for di1 in range(idx, len(t2)):
             pairs.append((ci, di1))
         # t1: x |x| x |o o|
