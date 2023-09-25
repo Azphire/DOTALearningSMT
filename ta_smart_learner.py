@@ -73,7 +73,7 @@ def generate_pair(t1: TimedWord, t2: TimedWord) -> tuple:
     return tuple(pairs)
 
 
-def generate_t_reset(t: TimedWord, i: int, j: int) -> tuple:
+def generate_t_reset(t: TimedWord, i: int, j: int) -> tuple[dict, dict]:
     reset1, reset2 = dict(), dict()
     reset1[t[:i + 1]] = True
     for k in range(i + 1, len(t)):
@@ -152,7 +152,7 @@ def generate_pair_resets_enhance(t1: TimedWord, t2: TimedWord, t1r1: int, t1r2: 
 class TestSequence:
     """Represents data for a single test sequence."""
 
-    def __init__(self, tws, res):
+    def __init__(self, tws: list[TimedWord], res: int):
         """Initialize data for a test sequence.
 
         tws - list(TimedWord)
@@ -181,7 +181,7 @@ class TestSequence:
     def __repr__(self):
         return str(self)
 
-    def testSuffix(self, ta, tws2, shift=0):
+    def testSuffix(self, ta: TA, tws2: TimedWord, shift=0):
         """Test the given timed words starting from self.
 
         tws2 - list(TimedWord): suffix to be appended.
@@ -197,7 +197,7 @@ class TestSequence:
 
         return self.info[tws2]
 
-    def getTimeVal(self, resets):
+    def getTimeVal(self, resets) -> tuple:
         """Given a choice of resets, find the value of time at the end.
         
         resets - dict(TimedWord, bool).
@@ -327,56 +327,56 @@ class Learner:
         # resets, add the corresponding constraint1. Otherwise, record the
         # inability to distinguish to constraint1_triple.
         for row in self.R:
-            if not sequence.is_sink and not self.R[row].is_sink:
-                if sequence.is_accept != self.R[row].is_accept:
-                    self.constraint1_formula.append(self.state_name[row] != self.state_name[tws])
-                else:
-                    # TODO: here
+            if not sequence.is_sink and not self.R[row].is_sink:  # 都不是sink
+                if sequence.is_accept != self.R[row].is_accept:  # 成员查询结果不一样
+                    self.constraint1_formula.append(self.state_name[row] != self.state_name[tws])  # 更新c1
+                else:  # 成员查询结果一样
                     pairs = generate_pair(row, tws)
                     test_res = dict()
                     test_row = dict()
                     test_col = dict()
                     # Store test result in a matrix, which is convenient for 
                     # observing the result in one row (column)
-                    for i, j in pairs:
-                        reset = generate_pair_resets(row, tws, i, j)
-                        res = (self.findDistinguishingSuffix(self.R[row], sequence, reset, i, j) is not None)
-                        if i not in test_row:
-                            test_row[i] = {j: res}
+                    for t1r1, t1r2, t2r1, t2r2 in pairs:
+                        reset = generate_pair_resets(row, tws, t1r1, t1r2, t2r1, t2r2)
+                        res = (self.findDistinguishingSuffix(self.R[row], sequence, reset, t1r1, t1r2, t2r1, t2r2)
+                               is not None)  # TODO
+                        if (t1r1, t1r2) not in test_row:
+                            test_row[(t1r1, t1r2)] = {(t2r1, t2r2): res}
                         else:
-                            test_row[i][j] = res
-                        if j not in test_col:
-                            test_col[j] = {i: res}
+                            test_row[(t1r1, t1r2)][(t2r1, t2r2)] = res
+                        if (t2r1, t2r2) not in test_col:
+                            test_col[(t2r1, t2r2)] = {(t1r1, t1r2): res}
                         else:
-                            test_col[j][i] = res
-                        test_res[(i, j)] = res
+                            test_col[(t2r1, t2r2)][(t1r1, t1r2)] = res
+                        test_res[((t1r1, t1r2), (t2r1, t2r2))] = res
                     if all(res for _, res in test_res.items()):
                         self.constraint1_formula.append(self.state_name[row] != self.state_name[tws])
                     else:
                         # If all j can be distinguished by a specific i
-                        for i in test_row:
-                            if all(res for _, res in test_row[i].items()):
-                                row_i_reset = generate_t_reset(row, i)
-                                row_f = z3.Implies(self.encodeReset(row_i_reset, self.reset_name),
+                        for (t1r1, t1r2) in test_row:
+                            if all(res for _, res in test_row[(t1r1, t1r2)].items()):
+                                row_resets1, row_resets2 = generate_t_reset(row, t1r1, t1r2)
+                                row_f = z3.Implies(self.encodeReset(row_resets1, row_resets2, self.reset_name),
                                                    self.state_name[row] != self.state_name[tws])
                                 self.constraint1_formula.append(row_f)
 
                                 # Delete used pairs
-                                for ii, jj in list(test_res.keys()):
-                                    if i == ii:
-                                        del test_res[(ii, jj)]
-                        for j in test_col:
-                            if all(res for _, res in test_col[j].items()):
-                                col_j_reset = generate_t_reset(tws, j)
-                                col_f = z3.Implies(self.encodeReset(col_j_reset, self.reset_name),
+                                for (t1r1_, t1r2_), (t2r1_, t2r2_) in list(test_res.keys()):
+                                    if (t1r1_, t1r2_) == (t1r1, t1r2):
+                                        del test_res[((t1r1_, t1r2_), (t2r1_, t2r2_))]
+                        for (t2r1, t2r2) in test_col:
+                            if all(res for _, res in test_col[(t2r1, t2r2)].items()):
+                                col_reset1, col_reset2 = generate_t_reset(tws, t2r1, t2r2)
+                                col_f = z3.Implies(self.encodeReset(col_reset1, col_reset2, self.reset_name),
                                                    self.state_name[row] != self.state_name[tws])
                                 self.constraint1_formula.append(col_f)
                                 # spec_col.append(self.encodeReset(col_j_reset, self.reset_name))
-                                for ii, jj in list(test_res.keys()):
-                                    if j == jj:
-                                        del test_res[(ii, jj)]
-                        for (i, j), res in test_res.items():
-                            reset = generate_pair_resets(row, tws, i, j)
+                                for (t1r1_, t1r2_), (t2r1_, t2r2_) in list(test_res.keys()):
+                                    if (t2r1_, t2r2_) == (t2r1, t2r2):
+                                        del test_res[(t1r1_, t1r2_), (t2r1_, t2r2_)]
+                        for ((t1r1, t1r2), (t2r1, t2r2)), res in test_res.items():
+                            reset = generate_pair_resets(row, tws, t1r1, t1r2, t2r1, t2r2)  # 这里要怎么设置?
                             if res:
                                 f = z3.Implies(self.encodeReset(reset, self.reset_name),
                                                self.state_name[row] != self.state_name[tws])
@@ -581,7 +581,7 @@ class Learner:
 
         return True
 
-    def findDistinguishingSuffix(self, info1, info2, resets, i, j, E=None, bb=None):
+    def findDistinguishingSuffix(self, info1, info2, resets, t1r1, t1r2, t2r1, t2r2, E=None, bb=None):
         """Check whether the two timed words are equivalent.
         
         If equivalent according to the current E, return None.
@@ -637,7 +637,8 @@ class Learner:
             self.cache[(info1, info2)][(i, j, bb)] = res
         return res
 
-    def encodeReset(self, reset, resets_var):
+    def encodeReset(self, reset1: dict, reset2: dict, resets_var: dict):
+        # TODO
         """Encode the reset information into formula.
         
         Note: the formula only contains rows which start from the last reset.
@@ -649,11 +650,16 @@ class Learner:
         since (a, t1) and (a, t1)(b, t2) 's reset cannot influence the whole time.
         """
         formula = []
-        for row, r in reset.items():
+        for row, r in reset1.items():
             if r:
-                formula.append(resets_var[row])
+                formula.append(resets_var[row][0])
             else:
-                formula.append(z3.Not(resets_var[row]))
+                formula.append(z3.Not(resets_var[row][0]))
+        for row, r in reset2.items():
+            if r:
+                formula.append(resets_var[row][1])
+            else:
+                formula.append(z3.Not(resets_var[row][1]))
         assert len(formula) > 0, "Invalid resets!"
         return z3.And(formula)
 
