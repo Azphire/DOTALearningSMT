@@ -73,46 +73,48 @@ def generate_pair(t1: TimedWord, t2: TimedWord) -> tuple:
     return tuple(pairs)
 
 
-def generate_t_reset(t: TimedWord, i: int, j: int) -> tuple[dict, dict]:
-    reset1, reset2 = dict(), dict()
-    reset1[t[:i + 1]] = True
-    for k in range(i + 1, len(t)):
-        reset1[t[:k + 1]] = False
-    if tuple() in reset1:
-        del reset1[tuple()]
-    reset2[t[:j + 1]] = True
-    for k in range(j + 1, len(t)):
-        reset2[t[:k + 1]] = False
-    if tuple() in reset2:
-        del reset2[tuple()]
-    return reset1, reset2
+def generate_t_reset(t: TimedWord, i: int, j: int) -> dict:
+    reset = dict()
+    min_ij = min(i, j)
+    max_ij = max(i, j)
+    reset[t[:min_ij + 1]] = (True, True)
+    for k in range(i + 1, j + 1):
+        reset[t[:k + 1]] = (False, True)
+    for k in range(j + 1, i + 1):
+        reset[t[:k + 1]] = (True, False)
+    for k in range(max_ij + 1, len(t)):
+        reset[t[:k + 1]] = (False, False)
+
+    if tuple() in reset:
+        del reset[tuple()]
+    return reset
 
 
-def generate_pair_resets(t1: TimedWord, t2: TimedWord, t1r1: int, t1r2: int, t2r1: int, t2r2: int) -> list:
-    # reset = generate_reset_at_i(t1, i)
-    # reset.update(generate_reset_at_i(t2, j))
-    reset_t1r1, reset_t1r2, reset_t2r1, reset_t2r2 = dict(), dict(), dict(), dict()
-    reset_t1r1[t1[:t1r1 + 1]] = True
-    reset_t1r2[t1[:t1r2 + 1]] = True
-    reset_t2r1[t2[:t2r1 + 1]] = True
-    reset_t2r2[t2[:t2r2 + 1]] = True
-    for k in range(t1r1 + 1, len(t1)):
-        reset_t1r1[t1[:k + 1]] = False
-    for k in range(t1r2 + 1, len(t1)):
-        reset_t1r2[t1[:k + 1]] = False
-    for k in range(t2r1 + 1, len(t2)):
-        reset_t2r1[t2[:k + 1]] = False
-    for k in range(t2r2 + 1, len(t2)):
-        reset_t2r2[t2[:k + 1]] = False
-    if tuple() in reset_t1r1:
-        del reset_t1r1[tuple()]
-    if tuple() in reset_t1r2:
-        del reset_t1r2[tuple()]
-    if tuple() in reset_t2r1:
-        del reset_t2r1[tuple()]
-    if tuple() in reset_t2r2:
-        del reset_t2r2[tuple()]
-    return [reset_t1r1, reset_t1r2, reset_t2r1, reset_t2r2]
+def generate_pair_resets(t1: TimedWord, t2: TimedWord, t1r1: int, t1r2: int, t2r1: int, t2r2: int) -> dict:
+    reset = generate_t_reset(t1, t1r1, t1r2)
+    reset.update(generate_t_reset(t2, t2r1, t2r2))
+    # reset_t1r1, reset_t1r2, reset_t2r1, reset_t2r2 = dict(), dict(), dict(), dict()
+    # reset_t1r1[t1[:t1r1 + 1]] = True
+    # reset_t1r2[t1[:t1r2 + 1]] = True
+    # reset_t2r1[t2[:t2r1 + 1]] = True
+    # reset_t2r2[t2[:t2r2 + 1]] = True
+    # for k in range(t1r1 + 1, len(t1)):
+    #     reset_t1r1[t1[:k + 1]] = False
+    # for k in range(t1r2 + 1, len(t1)):
+    #     reset_t1r2[t1[:k + 1]] = False
+    # for k in range(t2r1 + 1, len(t2)):
+    #     reset_t2r1[t2[:k + 1]] = False
+    # for k in range(t2r2 + 1, len(t2)):
+    #     reset_t2r2[t2[:k + 1]] = False
+    # if tuple() in reset_t1r1:
+    #     del reset_t1r1[tuple()]
+    # if tuple() in reset_t1r2:
+    #     del reset_t1r2[tuple()]
+    # if tuple() in reset_t2r1:
+    #     del reset_t2r1[tuple()]
+    # if tuple() in reset_t2r2:
+    #     del reset_t2r2[tuple()]
+    return reset
 
 
 def generate_reset_rows(t1: TimedWord, t2: TimedWord) -> list:
@@ -124,26 +126,26 @@ def generate_reset_rows(t1: TimedWord, t2: TimedWord) -> list:
 
 
 def generate_pair_resets_enhance(t1: TimedWord, t2: TimedWord, t1r1: int, t1r2: int, t2r1: int, t2r2: int,
-                                 T1, T2) -> list:
+                                 T1, T2) -> dict:
     prefix_reset = generate_pair_resets(t1[:-1], t2[:-1], t1r1, t1r2, t2r1, t2r2)
     if T1 == TT:
-        prefix_reset[0][t1], prefix_reset[2][t2] = True, True
+        prefix_reset[t1] = True, True
     elif T1 == TF:
-        prefix_reset[0][t1], prefix_reset[2][t2] = True, False
+        prefix_reset[t1] = True, False
     elif T1 == FT:
-        prefix_reset[0][t1], prefix_reset[2][t2] = False, True
+        prefix_reset[t1] = False, True
     elif T1 == FF:
-        prefix_reset[0][t1], prefix_reset[2][t2] = False, False
+        prefix_reset[t1] = False, False
     else:
         raise NotImplementedError
     if T2 == TT:
-        prefix_reset[1][t1], prefix_reset[3][t2] = True, True
+        prefix_reset[t2] = True, True
     elif T2 == TF:
-        prefix_reset[1][t1], prefix_reset[3][t2] = True, False
+        prefix_reset[t2] = True, False
     elif T2 == FT:
-        prefix_reset[1][t1], prefix_reset[3][t2] = False, True
+        prefix_reset[t2] = False, True
     elif T2 == FF:
-        prefix_reset[1][t1], prefix_reset[3][t2] = False, False
+        prefix_reset[t2] = False, False
     else:
         raise NotImplementedError
     return prefix_reset
@@ -340,7 +342,7 @@ class Learner:
                     for t1r1, t1r2, t2r1, t2r2 in pairs:
                         reset = generate_pair_resets(row, tws, t1r1, t1r2, t2r1, t2r2)
                         res = (self.findDistinguishingSuffix(self.R[row], sequence, reset, t1r1, t1r2, t2r1, t2r2)
-                               is not None)  # TODO
+                               is not None)
                         if (t1r1, t1r2) not in test_row:
                             test_row[(t1r1, t1r2)] = {(t2r1, t2r2): res}
                         else:
@@ -356,8 +358,8 @@ class Learner:
                         # If all j can be distinguished by a specific i
                         for (t1r1, t1r2) in test_row:
                             if all(res for _, res in test_row[(t1r1, t1r2)].items()):
-                                row_resets1, row_resets2 = generate_t_reset(row, t1r1, t1r2)
-                                row_f = z3.Implies(self.encodeReset(row_resets1, row_resets2, self.reset_name),
+                                row_resets = generate_t_reset(row, t1r1, t1r2)
+                                row_f = z3.Implies(self.encodeReset(row_resets, self.reset_name),
                                                    self.state_name[row] != self.state_name[tws])
                                 self.constraint1_formula.append(row_f)
 
@@ -367,8 +369,8 @@ class Learner:
                                         del test_res[((t1r1_, t1r2_), (t2r1_, t2r2_))]
                         for (t2r1, t2r2) in test_col:
                             if all(res for _, res in test_col[(t2r1, t2r2)].items()):
-                                col_reset1, col_reset2 = generate_t_reset(tws, t2r1, t2r2)
-                                col_f = z3.Implies(self.encodeReset(col_reset1, col_reset2, self.reset_name),
+                                col_reset = generate_t_reset(tws, t2r1, t2r2)
+                                col_f = z3.Implies(self.encodeReset(col_reset, self.reset_name),
                                                    self.state_name[row] != self.state_name[tws])
                                 self.constraint1_formula.append(col_f)
                                 # spec_col.append(self.encodeReset(col_j_reset, self.reset_name))
@@ -382,7 +384,7 @@ class Learner:
                                                self.state_name[row] != self.state_name[tws])
                                 self.constraint1_formula.append(f)
                             else:
-                                self.constraint1_triple.append((row, tws, reset, i, j))
+                                self.constraint1_triple.append((row, tws, reset, (t1r1, t1r2), (t2r1, t2r2)))
 
         new_Es = []
         for row in self.R:
@@ -391,48 +393,53 @@ class Learner:
                 pairs = generate_pair(row[:-1], tws[:-1])
                 # possible_resets = generate_row_resets_enhance(row, tws)
                 # for reset in possible_resets:
-                for i, j in pairs:
-                    for b in range(4):
-                        # reset = generate_row_resets_enhance1(row, tws, i, j, b)
-                        reset = generate_pair_resets_enhance(row, tws, i, j, b)
-                        if self.findDistinguishingSuffix(self.R[row[:-1]], self.R[tws[:-1]], reset, i, j) is None:
-                            time_val1 = self.R[row[:-1]].getTimeVal(reset)
-                            time_val2 = self.R[tws[:-1]].getTimeVal(reset)
-                            if isSameRegion(time_val1 + row[-1].time, time_val2 + tws[-1].time):
-                                f = z3.Implies(self.state_name[row[:-1]] == self.state_name[tws[:-1]],
-                                               z3.Not(self.encodeReset(reset, self.reset_name)))
-                                # If reached the same time region, then the two states being the same
-                                # implies the two resets must be the same. Add the corresponding formula
-                                # to constraint2, and record the information in constraint2_triple.
-                                if reset[row] != reset[tws]:
-                                    self.constraint2_formula.append(f)
-                                    continue
+                for t1r1, t1r2, t2r1, t2r2 in pairs:
+                    for b1 in range(4):
+                        for b2 in range(4):
+                            # reset = generate_row_resets_enhance1(row, tws, i, j, b)
+                            reset = generate_pair_resets_enhance(row, tws, t1r1, t1r2, t2r1, t2r2, b1, b2)
+                            if self.findDistinguishingSuffix(self.R[row[:-1]], self.R[tws[:-1]], reset,
+                                                             t1r1, t1r2, t2r1, t2r2) is None:
+                                time_vals1 = self.R[row[:-1]].getTimeVal(reset)
+                                time_vals2 = self.R[tws[:-1]].getTimeVal(reset)
+                                if isSameRegion(time_vals1[0] + row[-1].time, time_vals2[0] + tws[-1].time) and \
+                                        isSameRegion(time_vals1[1] + row[-1].time, time_vals2[1] + tws[-1].time):
+                                    f = z3.Implies(self.state_name[row[:-1]] == self.state_name[tws[:-1]],
+                                                   z3.Not(self.encodeReset(reset, self.reset_name)))
+                                    # If reached the same time region, then the two states being the same
+                                    # implies the two resets must be the same. Add the corresponding formula
+                                    # to constraint2, and record the information in constraint2_triple.
+                                    if reset[row] != reset[tws]:
+                                        self.constraint2_formula.append(f)
+                                        continue
 
-                                suffix = self.findDistinguishingSuffix(self.R[row], sequence, reset, i, j, bb=b)
-                                # If row[:-1] and tws[:-1] are not distinguishable by the current suffixes,
-                                # but row and tws are distinguishable, add new suffix to E. Also add the
-                                # constraint excluding row[:-1] and tws[:-1] being the same state under the
-                                # given reset.
-                                # Constraint4_formula1: It means that if tws[:-1] and rows[:-1] are at the 
-                                # same state, tws and rows are also supposed to at the same state under 
-                                # current reset, if not, the reset is invalid.
-                                if suffix is not None:
-                                    self.constraint4_formula1.append(f)
-                                    # May become different after adding some suffixes
-                                    suffix = (TimedWord(row[-1].action, min(row[-1].time, tws[-1].time)),) + suffix
-                                    new_Es.append(suffix)
+                                    suffix = self.findDistinguishingSuffix(self.R[row], sequence, reset,
+                                                                           t1r1, t1r2, t2r1, t2r2, bb=(b1, b2))
+                                    # If row[:-1] and tws[:-1] are not distinguishable by the current suffixes,
+                                    # but row and tws are distinguishable, add new suffix to E. Also add the
+                                    # constraint excluding row[:-1] and tws[:-1] being the same state under the
+                                    # given reset.
+                                    # Constraint4_formula1: It means that if tws[:-1] and rows[:-1] are at the
+                                    # same state, tws and rows are also supposed to at the same state under
+                                    # current reset, if not, the reset is invalid.
+                                    if suffix is not None:
+                                        self.constraint4_formula1.append(f)
+                                        # May become different after adding some suffixes
+                                        suffix = (TimedWord(row[-1].action, min(row[-1].time, tws[-1].time)),) + suffix
+                                        new_Es.append(suffix)
 
-                                # If row and tws are also not distinguishable, add a constraint saying
-                                # if row[:-1] and tws[:-1] are mapped to the same state, then under the
-                                # given reset row and tws are also mapped to the same reset.
-                                else:
-                                    f2 = z3.Implies(z3.And(self.state_name[row[:-1]] == self.state_name[tws[:-1]],
-                                                           self.encodeReset(reset, self.reset_name)),
-                                                    self.state_name[row] == self.state_name[tws])
-                                    self.constraint4_formula2.append(f2)
-                                    # E is increasing, row and tws are possible to be distinguished in t future, 
-                                    # so store (row, tws, reset) in constraint4_triple1
-                                    self.constraint4_triple1.append((row, tws, reset, i, j, b))
+                                    # If row and tws are also not distinguishable, add a constraint saying
+                                    # if row[:-1] and tws[:-1] are mapped to the same state, then under the
+                                    # given reset row and tws are also mapped to the same reset.
+                                    else:
+                                        f2 = z3.Implies(z3.And(self.state_name[row[:-1]] == self.state_name[tws[:-1]],
+                                                               self.encodeReset(reset, self.reset_name)),
+                                                        self.state_name[row] == self.state_name[tws])
+                                        self.constraint4_formula2.append(f2)
+                                        # E is increasing, row and tws are possible to be distinguished in t future,
+                                        # so store (row, tws, reset) in constraint4_triple1
+                                        self.constraint4_triple1.append((row, tws, reset, (t1r1, t1r2), (t2r1, t2r2),
+                                                                         (b1, b2)))
 
         # Add a new timed word to R.
         self.R[tws] = sequence
@@ -455,29 +462,33 @@ class Learner:
         # Add new formulas to constraint1.
         self.E.append(suffix)
         delete_items = []
-        for tw1, tw2, reset, i, j in self.constraint1_triple:
-            if self.findDistinguishingSuffix(self.R[tw1], self.R[tw2], reset, i, j, suffix) is not None:
+        for tw1, tw2, reset, (t1r1, t1r2), (t2r1, t2r2) in self.constraint1_triple:
+            if self.findDistinguishingSuffix(self.R[tw1], self.R[tw2], reset, t1r1, t1r2, t2r1, t2r2, suffix) \
+                    is not None:
                 f = z3.Implies(self.encodeReset(reset, self.reset_name),
                                self.state_name[tw1] != self.state_name[tw2])
                 self.constraint1_formula.append(f)
-                delete_items.append((tw1, tw2, reset, i, j))
+                delete_items.append((tw1, tw2, reset, (t1r1, t1r2), (t2r1, t2r2)))
 
         for t in delete_items:
             self.constraint1_triple.remove(t)
 
         # Re-test condition for adding to constraint4_formula1. Should add to new_Es?
         delete_items = []
-        for tw1, tw2, reset, i, j, b in self.constraint4_triple1:
-            if self.findDistinguishingSuffix(self.R[tw1[:-1]], self.R[tw2[:-1]], reset, i, j, suffix) is None:
-                time_val1 = self.R[tw1[:-1]].getTimeVal(reset)
-                time_val2 = self.R[tw2[:-1]].getTimeVal(reset)
-                if isSameRegion(time_val1 + tw1[-1].time, time_val2 + tw2[-1].time):
-                    s = self.findDistinguishingSuffix(self.R[tw1], self.R[tw2], reset, i, j, suffix, b)
+        for tw1, tw2, reset, (t1r1, t1r2), (t2r1, t2r2), (b1, b2) in self.constraint4_triple1:
+            if self.findDistinguishingSuffix(self.R[tw1[:-1]], self.R[tw2[:-1]], reset,
+                                             t1r1, t1r2, t2r1, t2r2, suffix) is None:
+                time_vals1 = self.R[tw1[:-1]].getTimeVal(reset)
+                time_vals2 = self.R[tw2[:-1]].getTimeVal(reset)
+                if isSameRegion(time_vals1[0] + tw1[-1].time, time_vals2[0] + tw2[-1].time) and \
+                        isSameRegion(time_vals1[1] + tw1[-1].time, time_vals2[1] + tw2[-1].time):
+                    s = self.findDistinguishingSuffix(self.R[tw1], self.R[tw2], reset, t1r1, t1r2, t2r1, t2r2, suffix,
+                                                      (b1, b2))
                     if s is not None:
                         f = z3.Implies(self.state_name[tw1[:-1]] == self.state_name[tw2[:-1]],
                                        z3.Not(self.encodeReset(reset, self.reset_name)))
                         self.constraint4_formula1.append(f)
-                        delete_items.append((tw1, tw2, reset, i, j, b))
+                        delete_items.append((tw1, tw2, reset, (t1r1, t1r2), (t2r1, t2r2), (b1, b2)))
 
         for t in delete_items:
             self.constraint4_triple1.remove(t)
@@ -493,9 +504,10 @@ class Learner:
             for tw2 in list(self.S.keys()) + delete_items:
                 # possible_resets = generate_reset_rows(tw1, tw2)
                 # for reset in possible_resets:
-                for (i, j) in generate_pair(tw1, tw2):
-                    reset = generate_pair_resets(tw1, tw2, i, j)
-                    if self.findDistinguishingSuffix(self.R[tw1], self.R[tw2], reset, i, j, suffix) is None:
+                for t1r1, t1r2, t2r1, t2r2 in generate_pair(tw1, tw2):
+                    reset = generate_pair_resets(tw1, tw2, t1r1, t1r2, t2r1, t2r2)
+                    if self.findDistinguishingSuffix(self.R[tw1], self.R[tw2], reset, t1r1, t1r2, t2r1, t2r2, suffix) \
+                            is None:
                         is_new_state = False
 
                 if not is_new_state:
@@ -573,10 +585,10 @@ class Learner:
             if row != tws:
                 # resets = generate_reset_rows(row, tws)
                 pairs = generate_pair(row, tws)
-                for i, j in pairs:
+                for t1r1, t1r2, t2r1, t2r2 in pairs:
                     # for reset in resets:
-                    reset = generate_pair_resets(row, tws, i, j)
-                    if self.findDistinguishingSuffix(self.R[row], sequence, reset, i, j) is None:
+                    reset = generate_pair_resets(row, tws, t1r1, t1r2, t2r1, t2r2)
+                    if self.findDistinguishingSuffix(self.R[row], sequence, reset, t1r1, t1r2, t2r1, t2r2) is None:
                         return False
 
         return True
@@ -592,14 +604,14 @@ class Learner:
         """
         if bb is None:
             if (info1, info2) in self.cache and E is None:
-                if (i, j) in self.cache[(info1, info2)]:
-                    return self.cache[(info1, info2)][(i, j)]
+                if (t1r1, t1r2, t2r1, t2r2) in self.cache[(info1, info2)]:
+                    return self.cache[(info1, info2)][(t1r1, t1r2, t2r1, t2r2)]
             else:
                 self.cache[(info1, info2)] = dict()
         else:
             if (info1, info2) in self.cache and E is None:
-                if (i, j, bb) in self.cache[(info1, info2)]:
-                    return self.cache[(info1, info2)][(i, j, bb)]
+                if (t1r1, t1r2, t2r1, t2r2, bb) in self.cache[(info1, info2)]:
+                    return self.cache[(info1, info2)][(t1r1, t1r2, t2r1, t2r2, bb)]
             else:
                 self.cache[(info1, info2)] = dict()
 
@@ -632,13 +644,12 @@ class Learner:
                 break
 
         if bb is None:
-            self.cache[(info1, info2)][(i, j)] = res
+            self.cache[(info1, info2)][(t1r1, t1r2, t2r1, t2r2)] = res
         else:
-            self.cache[(info1, info2)][(i, j, bb)] = res
+            self.cache[(info1, info2)][(t1r1, t1r2, t2r1, t2r2, bb)] = res
         return res
 
-    def encodeReset(self, reset1: dict, reset2: dict, resets_var: dict):
-        # TODO
+    def encodeReset(self, reset: dict, resets_var: dict):
         """Encode the reset information into formula.
         
         Note: the formula only contains rows which start from the last reset.
@@ -650,13 +661,12 @@ class Learner:
         since (a, t1) and (a, t1)(b, t2) 's reset cannot influence the whole time.
         """
         formula = []
-        for row, r in reset1.items():
-            if r:
+        for row, r1, r2 in reset.items():
+            if r1:
                 formula.append(resets_var[row][0])
             else:
                 formula.append(z3.Not(resets_var[row][0]))
-        for row, r in reset2.items():
-            if r:
+            if r2:
                 formula.append(resets_var[row][1])
             else:
                 formula.append(z3.Not(resets_var[row][1]))
@@ -693,7 +703,7 @@ class Learner:
             if info.is_sink:
                 # if r not in self.sink_constraint:
                 #     self.sink_constraint.add(r)
-                formulas.append(self.reset_name[r] == True)
+                formulas.append(self.reset_name[r] is True)
 
         return formulas
 
@@ -842,7 +852,7 @@ class Learner:
 
             prev_loc = states[twR[:-1]]
             start_time = self.R[twR[:-1]].getTimeVal(resets)
-            trans_time = start_time + twR[-1].time
+            trans_time = (start_time[0] + twR[-1].time, start_time[1] + twR[-1].time)
             if self.R[twR].is_sink:
                 cur_reset, cur_loc = True, states['sink']
             else:
@@ -858,6 +868,7 @@ class Learner:
         for act in self.actions:
             transitions[states["sink"]][act][0] = (True, states["sink"])
 
+        # TODO
         # From the dictionary of transitions, form the list otaTrans
         otaTrans = []
         for source in transitions:
