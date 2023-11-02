@@ -15,6 +15,7 @@ class TAEquivalence:
         if explore_ta1:
             for trans in self.ta1.trans_dict[(action, location)]:
                 # TODO: 每个region左右生成一个relay
+
                 pass
         else:
             pass
