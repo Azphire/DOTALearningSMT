@@ -884,7 +884,7 @@ class Learner:
                     time, reset, target = trans[i]
                     prev_time, prev_reset, prev_target = trans[i - 1]
                     if reset != prev_reset or target != prev_target:
-                        trans_new.append(trans[i])
+                        trans_new.append(trans[i] )
                 trans = trans_new
 
                 # Change to otaTrans.
@@ -932,8 +932,10 @@ def compute_max_time(candidate):
     max_time = 0
     for tran in candidate.trans:
         max_time = max(max_time,
-                       parse_time(tran.constraint.min_value),
-                       parse_time(tran.constraint.max_value))
+                       parse_time(tran.constraints[0].min_value),
+                       parse_time(tran.constraints[1].min_value),
+                       parse_time(tran.constraints[0].max_value),
+                       parse_time(tran.constraints[1].max_value))
     return max_time
 
 
@@ -1020,8 +1022,8 @@ def learn_ta(ta, verbose=True, graph=False):
         max_time_candidate = compute_max_time(candidate)
         max_time = max(max_time_ta, max_time_candidate)
 
-        ota_equiv = OTAEquivalence(max_time, assist_ta, candidate)
-        res, ctx_path = ota_equiv.test_equivalent()
+        ta_equiv = TAEquivalence(max_time, assist_ta, candidate)
+        res, ctx_path = ta_equiv.test_equivalent()
 
         # res, ctx = ota_equivalent(max_time, assist_ota, candidate)
         eq_query_num += 1

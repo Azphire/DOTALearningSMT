@@ -1,5 +1,6 @@
-from ta import Location, TA, TimedWord
+from ta import Location, TA, TimedWord, TATran
 from interval import Interval
+
 
 class TAEquivalence:
 
@@ -10,24 +11,68 @@ class TAEquivalence:
         self.explored = []
         self.to_explore = []
 
-    def split_relay(self, explore_ta1: bool, c1, c2, location, action: str):
+    def generate_relay(self, c1, c2, location1, location2, action: str) -> list:
         relay_list = []
-        if explore_ta1:
-            for trans in self.ta1.trans_dict[(action, location)]:
-                # TODO: 每个region左右生成一个relay
+        for trans in self.ta1.trans_dict[(action, location1)]:
+            # 每个region左右生成一个relay，即guard时间减去现在时间
+            if trans.constrains[0].min_value - c1[0] >= 0:
+                if trans.constrains[0].closed_min:
+                    relay_list.append(trans.constrains[0].min_value - c1[0])
+                else:
+                    relay_list.append(trans.constrains[0].min_value - c1[0] + 0.5)
+            if trans.constrains.max_value - c1[0] >= 0:
+                if trans.constrains[0].closed_max:
+                    relay_list.append(trans.constrains[0].max_value - c1[0])
+                elif trans.constrains[0].max_value - c1[0] > 0:
+                    relay_list.append(trans.constrains[0].max_value - c1[0] - 0.5)
+            if trans.constrains[1].min_value - c1[1] >= 0:
+                if trans.constrains[1].closed_min:
+                    relay_list.append(trans.constrains[1].min_value - c1[1])
+                else:
+                    relay_list.append(trans.constrains[1].min_value - c1[1] + 0.5)
+            if trans.constrains.max_value - c1[1] >= 0:
+                if trans.constrains[1].closed_max:
+                    relay_list.append(trans.constrains[1].max_value - c1[1])
+                elif trans.constrains[1].max_value - c1[1] > 0:
+                    relay_list.append(trans.constrains[1].max_value - c1[1] - 0.5)
 
-                pass
-        else:
-            pass
+        for trans in self.ta2.trans_dict[(action, location2)]:
+            # 每个region左右生成一个relay，即guard时间减去现在时间
+            if trans.constrains[0].min_value - c2[0] >= 0:
+                if trans.constrains[0].closed_min:
+                    relay_list.append(trans.constrains[0].min_value - c2[0])
+                else:
+                    relay_list.append(trans.constrains[0].min_value - c2[0] + 0.5)
+            if trans.constrains.max_value - c2[0] >= 0:
+                if trans.constrains[0].closed_max:
+                    relay_list.append(trans.constrains[0].max_value - c2[0])
+                elif trans.constrains[0].max_value - c2[0] > 0:
+                    relay_list.append(trans.constrains[0].max_value - c2[0] - 0.5)
+            if trans.constrains[1].min_value - c2[1] >= 0:
+                if trans.constrains[1].closed_min:
+                    relay_list.append(trans.constrains[1].min_value - c2[1])
+                else:
+                    relay_list.append(trans.constrains[1].min_value - c2[1] + 0.5)
+            if trans.constrains.max_value - c2[1] >= 0:
+                if trans.constrains[1].closed_max:
+                    relay_list.append(trans.constrains[1].max_value - c2[1])
+                elif trans.constrains[1].max_value - c2[1] > 0:
+                    relay_list.append(trans.constrains[1].max_value - c2[1] - 0.5)
+
+        relay_list = list(set(relay_list))
         return relay_list
 
-    def generate_to_explore(self, ta1_clocks, ta2_clocks, ta1_location, ta2_location, explore_ta1: bool):
-        if explore_ta1:
-            # 划分待生成ta的region
+    def generate_next_tws(self, ta1_clocks, ta2_clocks, ta1_location, ta2_location) -> list:
+        tws = []
+        for a in self.ta1.sigma:
+            relay_list = self.generate_relay(ta1_clocks, ta2_clocks, ta1_location, ta2_location, a)
+            for relay in relay_list:
+                tws.append(TimedWord(a, relay))
+        return tws
 
-
-            pass
-        else:
-            pass
-
+    def explore(self, ta1_clocks, ta2_clocks, ta1_location, ta2_location):
+        # TODO:搜索所有状态，查看有没有返回不同的，遇到重复的location+clocks组合或者clocks都超过max value就停止
         pass
+
+    def start_explore(self):
+        self.explore((0, 0), (0, 0), self.ta1.init_state, self.ta2.init_state)
