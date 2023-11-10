@@ -62,16 +62,21 @@ class TAEquivalence:
         relay_list = list(set(relay_list))
         return relay_list
 
-    def generate_next_tws(self, ta1_clocks, ta2_clocks, ta1_location, ta2_location) -> list:
+    def generate_tws(self, ta1_clocks, ta2_clocks, ta1_location, ta2_location) -> list:
         tws = []
         for a in self.ta1.sigma:
             relay_list = self.generate_relay(ta1_clocks, ta2_clocks, ta1_location, ta2_location, a)
             for relay in relay_list:
-                tws.append(TimedWord(a, relay))
+                tws.append((a, relay))
         return tws
 
     def explore(self, ta1_clocks, ta2_clocks, ta1_location, ta2_location):
         # TODO:搜索所有状态，查看有没有返回不同的，遇到重复的location+clocks组合或者clocks都超过max value就停止
+        tw_list = self.generate_tws(ta1_clocks, ta2_clocks, ta1_location, ta2_location)
+        for tw in tw_list:
+            ta1_target, ta1_resets = self.ta1.runTransition(ta1_clocks, tw[1], ta1_location, tw[0])
+            ta2_target, ta2_resets = self.ta2.runTransition(ta2_clocks, tw[1], ta2_location, tw[0])
+            # TODO：比较是否不同
         pass
 
     def start_explore(self):

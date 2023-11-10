@@ -63,7 +63,7 @@ class TimedWord:
 class TATran:
     """Represents a transition in timed automata."""
 
-    def __init__(self, source, action, constraints, resets, target):
+    def __init__(self, source, action, constraints: tuple[Interval], resets, target):
         """The initial data include:
 
         source : str, name of the source location.
@@ -193,6 +193,12 @@ class TA:
 
         self.query[tws] = result
         return result
+
+    def runTransition(self, clocks, relay, location, action):
+        for tran in self.trans_dict[(action, location)]:
+            if tran.is_pass(location, action, clocks, relay):
+                return tran.target, tran.resets
+        return False
 
 
 def TAToJSON(ta, file_name):
