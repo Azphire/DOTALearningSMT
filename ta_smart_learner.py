@@ -7,6 +7,8 @@ import copy
 import z3
 from os.path import commonprefix
 
+from ta_equivalence import TAEquivalence
+
 TT, TF, FT, FF = range(4)
 
 
@@ -208,12 +210,12 @@ class TestSequence:
         """
         cur_time0, cur_time1 = 0, 0
         for i, tw in reversed(list(enumerate(self.tws))):
-            if resets[self.tws[:i + 1]][0]:
+            if resets[0][self.tws[:i + 1]]:
                 break
             else:
                 cur_time0 += tw.time
         for i, tw in reversed(list(enumerate(self.tws))):
-            if resets[self.tws[:i + 1]][1]:
+            if resets[1][self.tws[:i + 1]]:
                 break
             else:
                 cur_time1 += tw.time
@@ -319,8 +321,8 @@ class Learner:
         # Create two z3 variables: r_n is a boolean variable for whether
         # there is reset following tws. s_n is an integer variable for
         # the assignment of the current state.
-        self.reset_name[tws] = z3.Bool("r_%d1" % len(self.R))  # reset1
-        self.reset_name[tws] = z3.Bool("r_%d2" % len(self.R))  # reset2
+        self.reset_name[(tws, 1)] = z3.Bool("r_%d1" % len(self.R))  # reset1
+        self.reset_name[(tws, 2)] = z3.Bool("r_%d2" % len(self.R))  # reset2
         self.state_name[tws] = z3.Int("s_%d" % len(self.R))
         sequence = TestSequence(tws, res)
 
@@ -703,7 +705,8 @@ class Learner:
             if info.is_sink:
                 # if r not in self.sink_constraint:
                 #     self.sink_constraint.add(r)
-                formulas.append(self.reset_name[r] is True)
+                formulas.append(self.reset_name[(r, 1)] == True)
+                formulas.append(self.reset_name[(r, 2)] == True)
 
         return formulas
 
@@ -803,21 +806,22 @@ class Learner:
         if str(self.solver.check()) == "unsat":
             # No assignment can be found for current S, extra_S, and state_num
             self.solver.pop()
-            return None, None
+            return None, None, None
 
         # An assignment is found, construct resets and states from the model.
         model = self.solver.model()
         self.solver.pop()
         self.clearConstraint()
-        resets, states = dict(), dict()
+        resets1, resets2, states = dict(), dict(), dict()
 
         for row in self.R:
             states[row] = str(model[self.state_name[row]])
-            resets[row] = bool(model[self.reset_name[row]])
+            resets1[row] = bool(model[self.reset_name[(row, 1)]])
+            resets2[row] = bool(model[self.reset_name[(row, 2)]])
 
         states["sink"] = str(state_num + 1)
 
-        return resets, states
+        return resets1, resets2, states
 
     def buildCandidateOTA(self, resets, states):
         """Construct candidate OTA from current information.
@@ -854,9 +858,9 @@ class Learner:
             start_time = self.R[twR[:-1]].getTimeVal(resets)
             trans_time = (start_time[0] + twR[-1].time, start_time[1] + twR[-1].time)
             if self.R[twR].is_sink:
-                cur_reset, cur_loc = True, states['sink']
+                cur_reset, cur_loc = (True, True), states['sink']
             else:
-                cur_reset, cur_loc = resets[twR], states[twR]
+                cur_reset, cur_loc = (resets[0][twR], resets[1][twR]), states[twR]
 
             if trans_time in transitions[prev_loc][twR[-1].action] and \
                     (cur_reset, cur_loc) != transitions[prev_loc][twR[-1].action][trans_time]:
@@ -866,9 +870,8 @@ class Learner:
 
         # Sink transitions
         for act in self.actions:
-            transitions[states["sink"]][act][0] = (True, states["sink"])
+            transitions[states["sink"]][act][(0, 0)] = ((True, True), states["sink"])
 
-        # TODO
         # From the dictionary of transitions, form the list otaTrans
         otaTrans = []
         for source in transitions:
@@ -876,8 +879,8 @@ class Learner:
                 # Sort and remove duplicates
                 trans = sorted((time, reset, target) for time, (reset, target) in trans.items())
                 # If the first transition is not zero, add transition to sink
-                if trans[0][0] != 0:
-                    trans = [(0, True, states["sink"])] + trans
+                if trans[0][0] != (0, 0):
+                    trans = [((0, 0), True, states["sink"])] + trans
 
                 trans_new = [trans[0]]
                 for i in range(1, len(trans)):
@@ -888,6 +891,7 @@ class Learner:
                 trans = trans_new
 
                 # Change to otaTrans.
+                # TODO: 双时钟的区间怎么生成
                 for i in range(len(trans)):
                     time, reset, target = trans[i]
                     if int(time) == time:
@@ -945,7 +949,7 @@ def learn_ta(ta, verbose=True, graph=False):
     verbose - whether to print debug information.
 
     """
-    print("Start to learn ota %s.\n" % ta.name)
+    print("Start to learn ta %s.\n" % ta.name)
     learner = Learner(ta)
     assist_ta = buildAssistantTA(ta)
     max_time_ta = compute_max_time(ta)
@@ -969,15 +973,15 @@ def learn_ta(ta, verbose=True, graph=False):
 
         # First, try with current state_num and enforce the constraint
         # that all representatives are in extra_S.
-        resets, states = learner.findReset(state_num, True)
+        resets1, resets2, states = learner.findReset(state_num, True)
 
         # If fails, try again without the constraint that all representatives
         # are in extra_S. Add any new representative to extra_S.
-        if resets is None:
-            resets, states = learner.findReset(state_num, False)
+        if resets1 is None:
+            resets1, resets2, states = learner.findReset(state_num, False)
 
             # If still not found, must increase state_num.
-            if resets is None:
+            if resets1 is None:
                 state_num += 1
                 print("Increment state_num to %s." % state_num)
                 continue
@@ -1006,16 +1010,18 @@ def learn_ta(ta, verbose=True, graph=False):
         if verbose:
             print(learner)
 
-        if resets is None:
+        if resets1 is None:
             # Should not arrive here
             raise AssertionError
 
         if verbose:
             print("resets and states:")
-            for tws, v in resets.items():
+            for tws, v in resets1.items():
+                print("  %s: %s %s" % (",".join(str(tw) for tw in tws), v, states[tws]))
+            for tws, v in resets2.items():
                 print("  %s: %s %s" % (",".join(str(tw) for tw in tws), v, states[tws]))
 
-        f, candidate = learner.buildCandidateOTA(resets, states)
+        f, candidate = learner.buildCandidateOTA((resets1, resets2), states)
         if not f:
             raise AssertionError("buildCandidateOTA failed.")
 
@@ -1023,7 +1029,7 @@ def learn_ta(ta, verbose=True, graph=False):
         max_time = max(max_time_ta, max_time_candidate)
 
         ta_equiv = TAEquivalence(max_time, assist_ta, candidate)
-        res, ctx_path = ta_equiv.test_equivalent()
+        res, ctx_path = ta_equiv.eq_query()
 
         # res, ctx = ota_equivalent(max_time, assist_ota, candidate)
         eq_query_num += 1

@@ -63,7 +63,7 @@ class TimedWord:
 class TATran:
     """Represents a transition in timed automata."""
 
-    def __init__(self, source, action, constraints: tuple[Interval], resets, target):
+    def __init__(self, source, action, constraints: tuple[Interval, Interval], resets: tuple[bool, bool], target):
         """The initial data include:
 
         source : str, name of the source location.
@@ -101,7 +101,7 @@ class TATran:
 class TA:
     """Represents a nondeterministic one-clock timed automata."""
 
-    def __init__(self, name, sigma, locations, trans, init_state, accept_states, sink_name=None):
+    def __init__(self, name, sigma, locations, trans: list[TATran], init_state, accept_states: list, sink_name=None):
         """The initial data are:
 
         name : str, name of the automata.
