@@ -877,7 +877,7 @@ class Learner:
         for source in transitions:
             for action, trans in transitions[source].items():
                 # Sort and remove duplicates
-                trans = sorted((time, reset, target) for time, (reset, target) in trans.items())
+                trans = sorted((times, resets, target) for times, (resets, target) in trans.items())
                 # If the first transition is not zero, add transition to sink
                 if trans[0][0] != (0, 0):
                     trans = [((0, 0), True, states["sink"])] + trans
@@ -887,17 +887,17 @@ class Learner:
                     time, reset, target = trans[i]
                     prev_time, prev_reset, prev_target = trans[i - 1]
                     if reset != prev_reset or target != prev_target:
-                        trans_new.append(trans[i] )
+                        trans_new.append(trans[i])
                 trans = trans_new
 
                 # Change to otaTrans.
                 # TODO: 双时钟的区间怎么生成
                 for i in range(len(trans)):
-                    time, reset, target = trans[i]
-                    if int(time) == time:
-                        min_value, closed_min = int(time), True
+                    times, resets, target = trans[i]
+                    if int(times) == times:
+                        min_value, closed_min = int(times), True
                     else:
-                        min_value, closed_min = int(time), False
+                        min_value, closed_min = int(times), False
                     if i < len(trans) - 1:
                         time2, reset2, target2 = trans[i + 1]
                         if int(time2) == time2:
@@ -907,7 +907,7 @@ class Learner:
                         constraint = Interval(min_value, closed_min, max_value, closed_max)
                     else:
                         constraint = Interval(min_value, closed_min, '+', False)
-                    otaTrans.append(TATran(source, action, constraint, reset, target))
+                    otaTrans.append(TATran(source, action, constraint, resets, target))
 
         # Form the location objects
         location_objs = set()
